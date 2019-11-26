@@ -5,6 +5,7 @@ import (
 
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
+	vtypes "github.com/filecoin-project/chain-validation/pkg/state/types"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -27,7 +28,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 
 	base := st.Cid()
 	randSrc := &vmRand{eCtx}
-	minerAddr, err := address.NewFromBytes([]byte(eCtx.MinerOwner))
+	minerAddr, err := address.NewFromBytes(eCtx.MinerOwner.Bytes())
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
@@ -40,6 +41,9 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
+	if ret.ActorErr != nil {
+		return vchain.MessageReceipt{}, ret.ActorErr
+	}
 
 	st.stateRoot, err = lotusVM.Flush(ctx)
 	if err != nil {
@@ -49,7 +53,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	mr := vchain.MessageReceipt{
 		ExitCode:    ret.ExitCode,
 		ReturnValue: ret.Return,
-		GasUsed:     vstate.GasUnit(ret.GasUsed.Uint64()),
+		GasUsed:     vtypes.GasUnit(ret.GasUsed.Uint64()),
 	}
 
 	return mr, nil

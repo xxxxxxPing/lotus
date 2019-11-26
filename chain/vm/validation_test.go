@@ -10,7 +10,7 @@ import (
 
 func TestStorageMinerValidation(t *testing.T) {
 	factory := validation.NewFactories()
-	suites.CreateStorageMinerAndUpdatePeerIDTest(t, factory)
+	suites.CreateStorageMinerAndUpdatePeerID(t, factory)
 
 }
 

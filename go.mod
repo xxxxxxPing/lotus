@@ -9,9 +9,9 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7
+	github.com/filecoin-project/chain-validation v0.0.1
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16
-	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
+	github.com/filecoin-project/go-bls-sigs v0.0.0-20191126221701-443b5348d38e
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
