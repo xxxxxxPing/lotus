@@ -48,7 +48,7 @@ type Miner struct {
 	lastWork *MiningBase
 }
 
-func (m *Miner) Addresses() ([]address.Address, error) {
+func (m *Miner) Addresses() ([]address.Address, error) {  // 返回一个地址空数组，并没有地址
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -62,8 +62,8 @@ func (m *Miner) Register(addr address.Address) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	if len(m.addresses) > 0 {
-		for _, a := range m.addresses {
+	if len(m.addresses) > 0 {   // 先检查地址数量，不为0时
+		for _, a := range m.addresses {  // 如果存在两个及以上的地址  或者  第一个地址与传进来的地址不相符，返回错误
 			if a == addr {
 				log.Warnf("miner.Register called more than once for actor '%s'", addr)
 				return xerrors.Errorf("miner.Register called more than once for actor '%s'", addr)
@@ -71,7 +71,7 @@ func (m *Miner) Register(addr address.Address) error {
 		}
 	}
 
-	m.addresses = append(m.addresses, addr)
+	m.addresses = append(m.addresses, addr) // 叠加地址到数组中
 	if len(m.addresses) == 1 {
 		m.stop = make(chan struct{})
 		go m.mine(context.TODO())
@@ -119,14 +119,14 @@ func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
 }
 
 func (m *Miner) mine(ctx context.Context) {
-	ctx, span := trace.StartSpan(ctx, "/mine")
+	ctx, span := trace.StartSpan(ctx, "/mine")  // 添加"/mine"字段到ctx中
 	defer span.End()
 
 	var lastBase MiningBase
 
 eventLoop:
-	for {
-		select {
+	for {  // 挖块死循环
+		select {  // 退出信号
 		case <-m.stop:
 			stopping := m.stopping
 			m.stop = nil
@@ -142,12 +142,12 @@ eventLoop:
 		m.lk.Unlock()
 
 		// Sleep a small amount in order to wait for other blocks to arrive
-		if err := m.waitFunc(ctx); err != nil {
+		if err := m.waitFunc(ctx); err != nil { // 为了等待其他区块的到来，半个区块时间的睡眠
 			log.Error(err)
 			return
 		}
 
-		base, err := m.GetBestMiningCandidate(ctx)
+		base, err := m.GetBestMiningCandidate(ctx)   // 获取最好的矿工候选者!!!!!!!!!!!!!!!!重点!!!!!!!!!!!!!!!!!!!!
 		if err != nil {
 			log.Errorf("failed to get best mining candidate: %s", err)
 			continue
@@ -162,7 +162,7 @@ eventLoop:
 		blks := make([]*types.BlockMsg, 0)
 
 		for _, addr := range addrs {
-			b, err := m.mineOne(ctx, addr, base)
+			b, err := m.mineOne(ctx, addr, base)  // 调用mineOne函数创建新的区块!!!!!!!!!!!!!!!重点更重点!!!!!!!!!!!!!!!!!!
 			if err != nil {
 				log.Errorf("mining block failed: %+v", err)
 				continue
@@ -172,10 +172,10 @@ eventLoop:
 			}
 		}
 
-		if len(blks) != 0 {
-			btime := time.Unix(int64(blks[0].Header.Timestamp), 0)
-			if time.Now().Before(btime) {
-				time.Sleep(time.Until(btime))
+		if len(blks) != 0 {  // 出块有效
+			btime := time.Unix(int64(blks[0].Header.Timestamp), 0)  // 获取出块时间
+			if time.Now().Before(btime) {  // 如果 即刻时间 < 出块时间
+				time.Sleep(time.Until(btime))   // 睡眠到出块时间
 			} else {
 				log.Warnw("mined block in the past", "block-time", btime,
 					"time", time.Now(), "duration", time.Now().Sub(btime))
@@ -191,13 +191,13 @@ eventLoop:
 				mWon[b.Header.Miner] = struct{}{}
 			}
 			for _, b := range blks {
-				if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
+				if err := m.api.SyncSubmitBlock(ctx, b); err != nil {  // 同步确认区块
 					log.Errorf("failed to submit newly mined block: %s", err)
 				}
 			}
-		} else {
-			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*base.nullRounds)), 0)
-			time.Sleep(time.Until(nextRound))
+		} else {  // 出块无效
+			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*base.nullRounds)), 0)  // 获取下一轮出块时间
+			time.Sleep(time.Until(nextRound))  // 睡眠到下一轮出块时间
 		}
 	}
 }
@@ -207,8 +207,8 @@ type MiningBase struct {
 	nullRounds uint64
 }
 
-func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
-	bts, err := m.api.ChainHead(ctx)
+func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {  // 产生最好矿工候选者
+	bts, err := m.api.ChainHead(ctx)   // 获取选票权重  func (a *ChainAPI) ChainHead -> func (cs *ChainStore) GetHeaviestTipSet  -> heaviest   *types.TipSet
 	if err != nil {
 		return nil, err
 	}
@@ -218,16 +218,16 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 			return m.lastWork, nil
 		}
 
-		btsw, err := m.api.ChainTipSetWeight(ctx, bts)
+		btsw, err := m.api.ChainTipSetWeight(ctx, bts)   // 设置本次选票权重    func (cs *ChainStore) Weight
 		if err != nil {
 			return nil, err
 		}
-		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.ts)
+		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.ts)  // 设置累积选票权重
 		if err != nil {
 			return nil, err
 		}
 
-		if types.BigCmp(btsw, ltsw) <= 0 {
+		if types.BigCmp(btsw, ltsw) <= 0 {  // 比较两个选票权重    func BigCmp(a, b BigInt)
 			return m.lastWork, nil
 		}
 	}
@@ -265,17 +265,17 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)
+	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)  // 产生本轮胜利者!!!!!!!!重点!!!!!!!
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
-	if !win {
+	if !win { // 如果没有胜出
 		base.nullRounds++
 		return nil, nil
 	}
 
-	b, err := m.createBlock(base, addr, ticket, proof)
+	b, err := m.createBlock(base, addr, ticket, proof)  // 到这里已经胜出了，创建区块
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
